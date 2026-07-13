@@ -1,0 +1,4 @@
+litellm
+pydantic
+click
+playwright
