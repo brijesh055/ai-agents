@@ -148,15 +148,17 @@ class BrijeshAI(App):
     def action_research(self, topic: str):
         out = self.query_one("#output", RichLog)
         from agents.researcher.agent import ResearcherAgent
+        from agents.researcher.prompts import SECTORS_ORDER
         out.write(f"\n[bold #ffa500]=== RESEARCH ===[/bold #ffa500]  {topic}")
         a = ResearcherAgent()
         r = a.research(topic)
-        for lens in ["technical", "business", "risks", "future", "actionable"]:
-            text = r.get("analyses", {}).get(lens) or r.get(lens, "")
+        sectors = r.get("sectors", {})
+        for sector in SECTORS_ORDER:
+            text = sectors.get(sector, "")
             if not text or text.startswith("Error"):
-                out.write(f"  [bold #ff4444]\u2718 {lens.upper()}: error[/bold #ff4444]")
+                out.write(f"  [bold #ff4444]\u2718 {sector.upper()}: error[/bold #ff4444]")
                 continue
-            out.write(f"\n  [bold #00d4aa]\u25B6 {lens.upper()}[/bold #00d4aa]")
+            out.write(f"\n  [bold #00d4aa]\u25B6 {sector.upper()}[/bold #00d4aa]")
             for line in text.strip().split("\n")[:6]:
                 out.write(f"    {line[:120]}")
 
@@ -176,7 +178,13 @@ class BrijeshAI(App):
             else:
                 out.write(f"  [bold #ff4444]\u2718 {name.upper()}[/bold #ff4444]  [dim #666666]{s.get('error', 'failed')}[/dim #666666]")
         if result.get("all_passed"):
-            out.write(f"\n  [bold #00d4aa]\u2713 Plan complete[/bold #00d4aa]")
+            report = result.get("results", {}).get("report", "")
+            out.write(f"\n[bold #00d4aa]\u2500" * 50 + "[/bold #00d4aa]")
+            out.write(f"\n[bold #ffa500]FINAL REPORT[/bold #ffa500]")
+            out.write(f"\n[dim #666666]Review the report below. When ready, order code with: /code <file> <instr> or /generate <spec>[/dim #666666]\n")
+            if report:
+                for line in report.split("\n"):
+                    out.write(f"  {line[:200]}")
         else:
             out.write(f"\n  [bold #ff4444]\u2718 Plan failed at: {result.get('failed_at')}[/bold #ff4444]")
 
@@ -339,7 +347,7 @@ class BrijeshAI(App):
         out = self.query_one("#output", RichLog)
         out.write(f"\n  [bold #ffa500]Commands[/bold #ffa500]")
         out.write(f"    [bold #ffa500]/research[/bold #ffa500] [dim #666666]<topic>[/dim #666666]")
-        out.write(f"    [bold #ffa500]/plan[/bold #ffa500] [dim #666666]<desc>[/dim #666666]")
+        out.write(f"    [bold #ffa500]/plan[/bold #ffa500] [dim #666666]<desc>[/dim #666666]        Research 6 sectors + final report (no auto-code)")
         out.write(f"    [bold #ffa500]/tool[/bold #ffa500] [dim #666666]<task>[/dim #666666]")
         out.write(f"    [bold #ffa500]/review[/bold #ffa500] [dim #666666]<file>[/dim #666666]")
         out.write(f"    [bold #ffa500]/code[/bold #ffa500] [dim #666666]<file> <desc>[/dim #666666]")

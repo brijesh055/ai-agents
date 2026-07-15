@@ -187,6 +187,7 @@ def sep():
 
 def do_research(topic):
     from agents.researcher.agent import ResearcherAgent
+    from agents.researcher.prompts import SECTORS_ORDER
     ctx = f"Project context: available agents = {', '.join(AGENTS.keys())}. "
     if DISCOVERED_SKILLS:
         ctx += f"Available skills = {', '.join(s['name'] for s in DISCOVERED_SKILLS[:5])}. "
@@ -194,12 +195,13 @@ def do_research(topic):
     a = ResearcherAgent()
     print(end="", flush=True)
     r = a.research(enriched)
-    for lens in ["technical", "business", "risks", "future", "actionable"]:
-        text = r.get("analyses", {}).get(lens) or r.get(lens, "")
+    sectors = r.get("sectors", {})
+    for sector in SECTORS_ORDER:
+        text = sectors.get(sector, "")
         if not text or text.startswith("Error"):
-            p(f"  <err>\u2718 {lens.upper()}: error</err>")
+            p(f"  <err>\u2718 {sector.upper()}: error</err>")
             continue
-        p(f"\n  <cmd>\u25B6 {lens.upper()}</cmd>")
+        p(f"\n  <cmd>\u25B6 {sector.upper()}</cmd>")
         for line in text.strip().split("\n")[:8]:
             print(f"    {line[:120]}")
     print()
@@ -259,11 +261,17 @@ def do_plan(description):
         else:
             p(f"  <err>\u2718 {name.upper()}</err>  <dim>{s.get('error', 'failed')}</dim>")
     if result.get("all_passed"):
+        report = result.get("results", {}).get("report", "")
         print()
-        p(f"  <ok>\u2713 Plan complete</ok>")
+        p(f"  <cmd>FINAL REPORT</cmd>")
+        p(f"  <dim>Review below, then order code with /code or /generate</dim>")
+        print()
+        if report:
+            for line in report.split("\n"):
+                print(f"  {line[:180]}")
     else:
         print()
-        p(f"  <err>\u2718 Plan failed at stage: {result.get('failed_at')}</err>")
+        p(f"  <err>\u2718 Plan failed at: {result.get('failed_at')}</err>")
     print()
 
 def do_tool(task):
