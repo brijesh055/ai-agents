@@ -1,2 +1,2 @@
 Set-Location -Path (Split-Path -Parent $MyInvocation.MyCommand.Path)
-python tui.py @args
+python tui_app.py @args

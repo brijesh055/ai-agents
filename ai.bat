@@ -1,3 +1,3 @@
 @echo off
 cd /d "%~dp0"
-python tui.py %*
+python tui_app.py %*

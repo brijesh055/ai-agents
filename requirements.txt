@@ -3,3 +3,4 @@ pydantic
 click
 playwright
 prompt_toolkit
+textual
