@@ -233,6 +233,48 @@ class BrijeshAI(App):
         out.write(f"    Cost:   ${s['session_cost']}")
         out.write(f"    [dim #666666]Provider: {self.provider} | Model: {self.model}[/dim #666666]")
 
+    def action_git(self, sub: str):
+        out = self.query_one("#output", RichLog)
+        import core.git_tools as git
+        if not git.is_repo():
+            out.write("  [bold #ff4444]Not a git repository[/bold #ff4444]")
+            return
+        if sub == "status" or not sub:
+            out.write(f"\n  [bold #ffa500]Git Status[/bold #ffa500]\n  " + git.status().replace("\n", "\n  "))
+        elif sub == "log":
+            out.write(f"\n  [bold #ffa500]Git Log[/bold #ffa500]\n  " + git.log(10).replace("\n", "\n  "))
+        elif sub == "branch":
+            out.write(f"\n  [bold #ffa500]Branches[/bold #ffa500]\n  " + "\n  ".join(git.branches()))
+        elif sub.startswith("commit"):
+            msg = sub.split(" ", 1)[1] if " " in sub else ""
+            if not msg:
+                msg = git.auto_commit_message()
+                out.write(f"  [dim #666666]Auto message: {msg}[/dim #666666]")
+            r = git.commit(msg)
+            if r["success"]:
+                out.write(f"  [bold #00d4aa]\u2713 {r['output']}[/bold #00d4aa]")
+            else:
+                out.write(f"  [bold #ff4444]\u2718 {r['output']}[/bold #ff4444]")
+        elif sub.startswith("switch") or sub.startswith("checkout"):
+            branch_name = sub.split(" ", 1)[1] if " " in sub else ""
+            if not branch_name:
+                out.write("  Usage: /git switch <branch>")
+                return
+            r = git.switch(branch_name)
+            if r["success"]:
+                out.write(f"  [bold #00d4aa]\u2713 Switched to {branch_name}[/bold #00d4aa]")
+            else:
+                out.write(f"  [bold #ff4444]\u2718 {r['output']}[/bold #ff4444]")
+        elif sub == "diff":
+            out.write(f"\n  [bold #ffa500]Git Diff[/bold #ffa500]\n  " + git.diff().replace("\n", "\n  "))
+        else:
+            out.write(f"  [dim #666666]Subcommands: status, log, branch, commit, switch, diff[/dim #666666]")
+
+    def action_project(self):
+        out = self.query_one("#output", RichLog)
+        from core.project_awareness import summary_text
+        out.write(f"\n  [bold #ffa500]Project Overview[/bold #ffa500]\n  " + summary_text().replace("\n", "\n  "))
+
     def action_skills(self):
         out = self.query_one("#output", RichLog)
         if not self.skills:
@@ -281,6 +323,8 @@ class BrijeshAI(App):
         out.write(f"    [bold #ffa500]/code[/bold #ffa500] [dim #666666]<file> <desc>[/dim #666666]")
         out.write(f"    [bold #ffa500]/generate[/bold #ffa500] [dim #666666]<spec>[/dim #666666]")
         out.write(f"    [bold #ffa500]/agent[/bold #ffa500] [dim #666666]<name>[/dim #666666]")
+        out.write(f"    [bold #ffa500]/git[/bold #ffa500] [dim #666666]status|log|commit|branch|switch|diff[/dim #666666]")
+        out.write(f"    [bold #ffa500]/project[/bold #ffa500]")
         out.write(f"    [bold #ffa500]/skills[/bold #ffa500]")
         out.write(f"    [bold #ffa500]/status[/bold #ffa500]")
         out.write(f"    [bold #ffa500]/clear[/bold #ffa500]")
@@ -324,6 +368,10 @@ class BrijeshAI(App):
                     self._update_status()
                 else:
                     out.write(f"  [dim #666666]Agents: {', '.join(AGENTS.keys())}[/dim #666666]")
+            elif cmd == "git":
+                self.action_git(args)
+            elif cmd == "project":
+                self.action_project()
             elif cmd == "skills":
                 self.action_skills()
             elif cmd == "skill":
