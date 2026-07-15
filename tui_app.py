@@ -1,11 +1,11 @@
-"""Brijesh'AI — Textual-based Rich TUI"""
+"""Brijesh'AI — Textual-based TUI (Claude Code style)"""
 import sys, os, json
 from pathlib import Path
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from textual.app import App, ComposeResult
-from textual.widgets import Header, Footer, Input, RichLog, Static, Label
-from textual.containers import Container, Horizontal, Vertical
+from textual.widgets import Input, RichLog, Static, Label
+from textual.containers import Container, Horizontal
 from textual.binding import Binding
 from textual.reactive import reactive
 from textual import work
@@ -24,103 +24,43 @@ AGENTS = {
 
 SESSION_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), ".session.json")
 
-SEPARATOR = "[dim #2a2a4a]\u2500[/dim #2a2a4a]" * 58
-
 class BrijeshAI(App):
     TITLE = BRAND
     CSS = """
-    Screen {
-        background: #0a0a1a;
-    }
+    Screen { background: #0c0c0c; }
     #header {
-        height: 3;
-        background: #0d0d24;
-        border-bottom: solid #2a2a4a;
-        padding: 0 2;
+        height: 1; background: #0c0c0c; padding: 0 1;
         layout: horizontal;
     }
-    #brand-label {
-        width: 22;
-        content-align: left middle;
-        color: #00e5bf;
-        text-style: bold;
-        padding: 0 1;
+    #brand {
+        width: auto; content-align: left middle;
+        color: #cccccc; text-style: bold;
     }
-    #header-center {
-        width: 1fr;
-        content-align: center middle;
-        color: #6b6b8a;
-        text-style: italic;
-    }
-    #header-right {
-        width: 40;
-        content-align: right middle;
-        color: #6b6b8a;
+    #head-right {
+        width: 1fr; content-align: right middle;
+        color: #555555;
     }
     #output {
-        height: 1fr;
-        border: none;
-        background: #0a0a1a;
-        color: #e8e8f0;
-        margin: 0 1;
-        padding: 0 1;
+        height: 1fr; border: none; background: #0c0c0c;
+        color: #d4d4d4; margin: 0 1; padding: 0 1;
     }
-    RichLog {
-        scrollbar-color: #2a2a4a #0d0d24;
-        scrollbar-size-vertical: 1;
+    RichLog { scrollbar-color: #333333 #0c0c0c; scrollbar-size-vertical: 1; }
+    #input-row {
+        height: 1; margin: 0 1; dock: bottom;
+        layout: horizontal;
     }
-    #input-container {
-        height: 3;
-        margin: 0 1 0 1;
-        dock: bottom;
-        background: #0d0d24;
-        border: solid #2a2a4a;
-    }
-    #input-prefix {
-        width: 3;
-        content-align: center middle;
-        color: #00e5bf;
-        text-style: bold;
-        background: #0d0d24;
+    #prompt {
+        width: 2; content-align: left middle;
+        color: #888888; text-style: bold;
     }
     #input {
-        background: #0d0d24;
-        color: #e8e8f0;
-        border: none;
-        padding: 0 1;
+        height: 1; background: #0c0c0c;
+        color: #d4d4d4; border: none; padding: 0;
     }
-    #input:focus {
-        background: #0d0d24;
-    }
-    #status-bar {
-        height: 1;
-        background: #0d0d24;
-        color: #6b6b8a;
-        text-align: center;
-        border-top: solid #1a1a3a;
-    }
-    .cmd-header {
-        color: #00e5bf;
-        text-style: bold;
-    }
-    .cmd-accent {
-        color: #ffb347;
-        text-style: bold;
-    }
-    .cmd-success {
-        color: #00e5bf;
-    }
-    .cmd-error {
-        color: #ff5252;
-        text-style: bold;
-    }
-    .cmd-dim {
-        color: #6b6b8a;
-        text-style: italic;
-    }
-    .cmd-prompt {
-        color: #00e5bf;
-        text-style: bold;
+    #status {
+        height: 1; background: #0c0c0c;
+        color: #555555; dock: bottom;
+        border-top: solid #1a1a1a;
     }
     """
 
@@ -130,20 +70,18 @@ class BrijeshAI(App):
 
     BINDINGS = [
         Binding("ctrl+c", "quit", "Quit", show=False),
-        Binding("ctrl+l", "clear_screen", "Clear", show=False),
-        Binding("ctrl+p", "focus_input", "Input", show=False),
+        Binding("ctrl+l", "clear_screen", "Clear", show=True),
     ]
 
     def compose(self) -> ComposeResult:
         with Horizontal(id="header"):
-            yield Label(f"[bold #00e5bf]Brijesh'AI[/bold #00e5bf] [dim #6b6b8a]v2.0[/dim #6b6b8a]", id="brand-label")
-            yield Label("multi-agent engineering platform", id="header-center")
-            yield Label("", id="header-right")
+            yield Label("Brijesh'AI", id="brand")
+            yield Label("", id="head-right")
         yield RichLog(id="output", highlight=True, markup=True, wrap=True, max_lines=3000)
-        with Horizontal(id="input-container"):
-            yield Label("\xbb", id="input-prefix")
-            yield Input(id="input", placeholder="Type /help for commands, or just ask a question...")
-        yield Static(id="status-bar")
+        with Horizontal(id="input-row"):
+            yield Label(">", id="prompt")
+            yield Input(id="input", placeholder="")
+        yield Static(id="status")
 
     def on_mount(self) -> None:
         self.query_one("#input", Input).focus()
@@ -152,7 +90,6 @@ class BrijeshAI(App):
         self._load_plugins()
         self._banner()
         self._update_status()
-        from core.cost_tracker import CostTracker
         self.cost_tracker = CostTracker()
 
     def _load_plugins(self):
@@ -160,32 +97,21 @@ class BrijeshAI(App):
         loaded = discover_plugins()
         if loaded:
             out = self.query_one("#output", RichLog)
-            out.write(f"  [dim #6b6b8a]\u25B8 plugins loaded: {', '.join(loaded)}[/dim #6b6b8a]")
+            out.write(f"[dim #555555]plugins: {', '.join(loaded)}[/dim #555555]")
         self.plugin_registry = get_registry()
 
     def _banner(self):
         out = self.query_one("#output", RichLog)
-        out.write("")
-        out.write(f"  [bold #00e5bf]  .--.      .--.   [/bold #00e5bf]")
-        out.write(f"  [bold #00e5bf]  |   \\    /   |   [/bold #00e5bf]")
-        out.write(f"  [bold #00e5bf]  |    \\  /    |   [/bold #00e5bf]  [bold #e8e8f0]Brijesh'AI[/bold #e8e8f0]  [dim #6b6b8a]v2.0[/dim #6b6b8a]")
-        out.write(f"  [bold #00e5bf]  |     \\/     |   [/bold #00e5bf]  [dim #6b6b8a]multi-agent engineering platform[/dim #6b6b8a]")
-        out.write(f"  [bold #00e5bf]  |            |   [/bold #00e5bf]")
-        out.write(f"  [bold #00e5bf]  '------------'   [/bold #00e5bf]")
-        agent = AGENTS[self.current_agent]
-        out.write(f"  [dim #6b6b8a]agent: {agent['label']}  |  {self.provider}/{self.model}[/dim #6b6b8a]")
-        out.write(f"  {SEPARATOR}")
+        out.write(f"[bold #cccccc]Brijesh'AI[/bold #cccccc] [dim #555555]v2.0 | {self.provider}/{self.model}[/dim #555555]")
+        out.write(f"[dim #333333]/help for commands[/dim #333333]")
         out.write("")
 
     def _discover_skills(self):
         from glob import glob
         self.skills = []
         seen = set()
-        search_dirs = [
-            os.path.expanduser("~/.config/opencode/skills"),
-            os.path.expanduser("~/.agents/skills"),
-        ]
-        for d in search_dirs:
+        for d in [os.path.expanduser("~/.config/opencode/skills"),
+                  os.path.expanduser("~/.agents/skills")]:
             for f in glob(os.path.join(d, "**/SKILL.md"), recursive=True):
                 name = Path(f).parent.name
                 if name not in seen:
@@ -217,26 +143,39 @@ class BrijeshAI(App):
             branch = git.branch() if git.is_repo() else ""
         except:
             branch = ""
-        parts = [f"{agent['emoji']} {agent['label']}  |  {self.provider}/{self.model}"]
+        parts = [f"{self.provider}/{self.model}"]
         if branch:
-            parts.append(f"  \u2387 {branch}")
-        cost = getattr(self, 'cost_tracker', None)
-        if cost:
-            s = cost.summary()
-            parts.append(f"  ${s['session_cost']:.4f}")
-        bar = self.query_one("#status-bar", Static)
-        bar.update("  " + "  |".join(parts) + f"  |  {BRAND}")
+            parts.append(branch)
+        c = getattr(self, 'cost_tracker', None)
+        if c:
+            s = c.summary()
+            parts.append(f"${s['session_cost']:.4f}")
+        self.query_one("#status", Static).update("  " + "  |  ".join(parts))
 
-    def _write_header(self, label: str, topic: str):
+    # --- action_help goes right in output, no separators ---
+    def action_help(self):
         out = self.query_one("#output", RichLog)
-        out.write(f"  {SEPARATOR}")
-        out.write(f"  [bold #00e5bf]\u25B6[/bold #00e5bf]  [bold #ffb347]{label}[/bold #ffb347]  [dim #6b6b8a]{topic}[/dim #6b6b8a]")
+        out.write("")
+        out.write(f"[bold #d4d4d4]Commands[/bold #d4d4d4]")
+        out.write(f"[dim #555555]/research[/dim #555555] [dim #555555]<topic>[/dim #555555]")
+        out.write(f"[dim #555555]/plan[/dim #555555] [dim #555555]<desc>[/dim #555555]  research 11 sectors + report")
+        out.write(f"[dim #555555]/tool[/dim #555555] [dim #555555]<task>[/dim #555555]  tool-using agent")
+        out.write(f"[dim #555555]/review[/dim #555555] [dim #555555]<file>[/dim #555555]")
+        out.write(f"[dim #555555]/code[/dim #555555] [dim #555555]<file> <instr>[/dim #555555]")
+        out.write(f"[dim #555555]/generate[/dim #555555] [dim #555555]<spec>[/dim #555555]")
+        out.write(f"[dim #555555]/agent[/dim #555555] [dim #555555]<name>[/dim #555555]")
+        out.write(f"[dim #555555]/git[/dim #555555] [dim #555555]status|log|commit|branch|switch|diff[/dim #555555]")
+        out.write(f"[dim #555555]/project[/dim #555555]")
+        out.write(f"[dim #555555]/plugins[/dim #555555]")
+        out.write(f"[dim #555555]/skills[/dim #555555]")
+        out.write(f"[dim #555555]/status[/dim #555555]")
+        out.write(f"[dim #555555]/clear[/dim #555555]  [dim #555555]/exit[/dim #555555]")
 
     def action_research(self, topic: str):
         out = self.query_one("#output", RichLog)
         from agents.researcher.agent import ResearcherAgent
         from agents.researcher.prompts import SECTORS_ORDER
-        self._write_header("RESEARCH", topic)
+        out.write(f"")
         a = ResearcherAgent()
         r = a.research(topic)
         if r.get("type") == "general":
@@ -244,25 +183,23 @@ class BrijeshAI(App):
             if answer:
                 for line in answer.split("\n"):
                     out.write(f"  {line[:200]}")
-            out.write(f"  {SEPARATOR}")
             return
         sectors = r.get("sectors", {})
         for sector in SECTORS_ORDER:
             text = sectors.get(sector, "")
             if not text or text.startswith("Error"):
-                out.write(f"  [bold #ff5252]\u2718 {sector.upper()}: error[/bold #ff5252]")
+                out.write(f"  [dim #555555]{sector}[/dim #555555] [bold #ff6b6b]\u2718[/bold #ff6b6b]")
                 continue
-            out.write(f"")
-            out.write(f"  [bold #ffb347]\u25B6 {sector.upper()}[/bold #ffb347]")
-            for line in text.strip().split("\n")[:5]:
-                out.write(f"    {line[:160]}")
-        out.write(f"  {SEPARATOR}")
+            out.write(f"  [dim #555555]{sector}[/dim #555555] [bold #98c379]\u2713[/bold #98c379]")
+            first = text.strip().split("\n")[0][:120]
+            out.write(f"    [dim #555555]{first}[/dim #555555]")
 
     @work(thread=True)
     def action_plan(self, description: str):
         from agents.orchestrator.agent import OrchestratorAgent
         out = self.query_one("#output", RichLog)
-        self._write_header("PLAN", description)
+        out.write(f"")
+        out.write(f"[bold #d4d4d4]plan:[/bold #d4d4d4] {description}")
         o = OrchestratorAgent()
         result = o.run_pipeline(description)
         for s in result.get("stages", []):
@@ -270,73 +207,66 @@ class BrijeshAI(App):
             status = s["status"]
             output = s.get("output", "")
             icon = "\u2713" if status == "done" else "\u2718"
-            cl = "#00e5bf" if status == "done" else "#ff5252"
-            out.write(f"  [{cl}]{icon} {name.upper()}[/{cl}]  [dim #6b6b8a]{output}[/dim #6b6b8a]")
+            cl = "#98c379" if status == "done" else "#ff6b6b"
+            out.write(f"  [{cl}]{icon}[/{cl}] [dim #555555]{name}  {output}[/dim #555555]")
         if result.get("type") == "general":
             answer = result.get("results", {}).get("research", {}).get("answer", "")
             if answer:
-                out.write("")
                 for line in answer.split("\n"):
                     out.write(f"  {line[:200]}")
-            out.write(f"  {SEPARATOR}")
             return
         if result.get("all_passed"):
             report = result.get("results", {}).get("report", "")
-            out.write(f"")
-            out.write(f"  [bold #00e5bf]\u2500[/bold #00e5bf]" * 58)
-            out.write(f"  [bold #ffb347]FINAL REPORT[/bold #ffb347]")
-            out.write(f"  [dim #6b6b8a]Review below \u2192 then order code: /code <file> <instr> | /generate <spec>[/dim #6b6b8a]")
-            out.write("")
+            out.write(f"  [dim #555555]\u2500[/dim #555555]" * 50)
+            out.write(f"  [bold #d4d4d4]report[/bold #d4d4d4]  [dim #555555]order code \u2192 /code or /generate[/dim #555555]")
             if report:
                 for line in report.split("\n"):
                     out.write(f"  {line[:200]}")
         else:
-            out.write(f"  [bold #ff5252]\u2718 Plan failed at: {result.get('failed_at')}[/bold #ff5252]")
-        out.write(f"  {SEPARATOR}")
+            out.write(f"  [bold #ff6b6b]\u2718 {result.get('failed_at')}[/bold #ff6b6b]")
 
     @work(thread=True)
     def action_tool(self, task: str):
         from core.tool_runner import ToolRunner
         out = self.query_one("#output", RichLog)
-        self._write_header("TOOL", task)
+        out.write(f"")
+        out.write(f"[bold #d4d4d4]tool:[/bold #d4d4d4] {task}")
         runner = ToolRunner()
         result = runner.run(
             "You are an AI assistant with tool access. Use tools to accomplish the task.",
             task, agent="tool_user",
         )
         for line in result.split("\n")[:30]:
-            out.write(f"  {line[:160]}")
-        out.write(f"  {SEPARATOR}")
+            out.write(f"  {line[:200]}")
 
     def action_review(self, filepath: str):
         out = self.query_one("#output", RichLog)
         from agents.reviewer.agent import ReviewerAgent
-        self._write_header("REVIEW", filepath)
+        out.write(f"")
+        out.write(f"[bold #d4d4d4]review:[/bold #d4d4d4] {filepath}")
         if not os.path.exists(filepath):
-            out.write(f"  [bold #ff5252]File not found: {filepath}[/bold #ff5252]")
-            out.write(f"  {SEPARATOR}")
+            out.write(f"  [bold #ff6b6b]not found: {filepath}[/bold #ff6b6b]")
             return
         r = ReviewerAgent().review(filepath)
         for i in r.get("issues", []):
-            sev = i.get("severity", "info")
+            sev = i.get("severity", "error")
             ln = i.get("line", "?")
-            cl = {"error": "#ff5252", "warn": "#ffb347", "info": "#6b6b8a"}.get(sev, "#6b6b8a")
-            out.write(f"  [{cl}][{sev.upper()}][L{ln}] {i.get('message', '')}[/{cl}]")
+            cl = "#ff6b6b" if sev == "error" else "#e5c07b" if sev == "warn" else "#555555"
+            out.write(f"  [{cl}][{sev}][L{ln}] {i.get('message', '')}[/{cl}]")
         s = r.get("summary", "")
         if s:
-            out.write(f"  [dim #6b6b8a]{s[:200]}[/dim #6b6b8a]")
-        out.write(f"  {SEPARATOR}")
+            out.write(f"  [dim #555555]{s[:200]}[/dim #555555]")
 
     def action_code(self, filepath: str, instructions: str):
         out = self.query_one("#output", RichLog)
         from agents.coder.agent import CodingAgent
-        self._write_header("CODE", f"{filepath}")
+        out.write(f"")
+        out.write(f"[bold #d4d4d4]code:[/bold #d4d4d4] {filepath}")
         r = CodingAgent().modify(filepath, instructions)
         if r.get("success"):
-            out.write(f"  [bold #00e5bf]\u2713 Modified {filepath}[/bold #00e5bf]")
+            out.write(f"  [bold #98c379]\u2713 modified[/bold #98c379]")
         else:
-            out.write(f"  [bold #ff5252]\u2718 {r.get('error', 'Failed')}[/bold #ff5252]")
-        out.write(f"  {SEPARATOR}")
+            out.write(f"  [bold #ff6b6b]\u2718 {r.get('error', 'Failed')}[/bold #ff6b6b]")
 
     def action_generate(self, spec: str):
         out = self.query_one("#output", RichLog)
@@ -345,102 +275,97 @@ class BrijeshAI(App):
         if " --lang " in spec:
             parts = spec.split(" --lang ", 1)
             spec, lang = parts[0], parts[1].strip() or "python"
-        self._write_header("GENERATE", f"{lang}")
+        out.write(f"")
+        out.write(f"[bold #d4d4d4]generate:[/bold #d4d4d4] {lang}")
         r = CodingAgent().generate(spec, lang)
         if r.get("success"):
             code = r["code"]
-            out.write(f"  [bold #00e5bf]\u2713 Generated {lang} code:[/bold #00e5bf]")
+            out.write(f"  [bold #98c379]\u2713 generated[/bold #98c379]")
             for line in code.split("\n")[:20]:
-                out.write(f"    {line}")
+                out.write(f"  {line}")
         else:
-            out.write(f"  [bold #ff5252]\u2718 {r.get('error', 'Failed')}[/bold #ff5252]")
-        out.write(f"  {SEPARATOR}")
+            out.write(f"  [bold #ff6b6b]\u2718 {r.get('error', 'Failed')}[/bold #ff6b6b]")
 
     def action_status(self):
         out = self.query_one("#output", RichLog)
         s = self.cost_tracker.summary()
         out.write(f"")
-        out.write(f"  [bold #ffb347]Session Status[/bold #ffb347]")
-        out.write(f"  [bold #00e5bf]\u2500[/bold #00e5bf]" * 40)
-        out.write(f"    calls : {s['calls']}")
-        out.write(f"    tokens: {s['tokens']['total']}  (in: {s['tokens']['input']}  out: {s['tokens']['output']})")
-        out.write(f"    cost  : [bold #ffb347]${s['session_cost']}[/bold #ffb347]")
-        out.write(f"    [dim #6b6b8a]model: {self.provider}/{self.model}[/dim #6b6b8a]")
-        out.write(f"  {SEPARATOR}")
+        out.write(f"[bold #d4d4d4]status[/bold #d4d4d4]")
+        out.write(f"  calls: {s['calls']}")
+        out.write(f"  tokens: {s['tokens']['total']} (in: {s['tokens']['input']} out: {s['tokens']['output']})")
+        out.write(f"  cost: [bold #e5c07b]${s['session_cost']}[/bold #e5c07b]")
+        out.write(f"  [dim #555555]model: {self.provider}/{self.model}[/dim #555555]")
 
     def action_git(self, sub: str):
         out = self.query_one("#output", RichLog)
         import core.git_tools as git
-        self._write_header("GIT", sub if sub else "status")
+        out.write(f"")
+        out.write(f"[bold #d4d4d4]git:[/bold #d4d4d4] {sub if sub else 'status'}")
         if not git.is_repo():
-            out.write(f"  [bold #ff5252]Not a git repository[/bold #ff5252]")
-            out.write(f"  {SEPARATOR}")
+            out.write(f"  [bold #ff6b6b]not a git repo[/bold #ff6b6b]")
             return
         if sub == "status" or not sub:
-            out.write(f"  [dim #6b6b8a]" + git.status().replace("\n", "\n  ") + "[/dim #6b6b8a]")
+            for line in git.status().split("\n"):
+                out.write(f"  [dim #555555]{line}[/dim #555555]")
         elif sub == "log":
-            out.write(f"  [dim #6b6b8a]" + git.log(10).replace("\n", "\n  ") + "[/dim #6b6b8a]")
+            for line in git.log(10).split("\n"):
+                out.write(f"  [dim #555555]{line}[/dim #555555]")
         elif sub == "branch":
-            out.write(f"  [dim #6b6b8a]" + "\n  ".join(git.branches()) + "[/dim #6b6b8a]")
+            for b in git.branches():
+                out.write(f"  [dim #555555]{b}[/dim #555555]")
         elif sub.startswith("commit"):
             msg = sub.split(" ", 1)[1] if " " in sub else ""
             if not msg:
                 msg = git.auto_commit_message()
-                out.write(f"  [dim #6b6b8a]auto: {msg}[/dim #6b6b8a]")
+                out.write(f"  [dim #555555]auto: {msg}[/dim #555555]")
             r = git.commit(msg)
-            if r["success"]:
-                out.write(f"  [bold #00e5bf]\u2713 {r['output']}[/bold #00e5bf]")
-            else:
-                out.write(f"  [bold #ff5252]\u2718 {r['output']}[/bold #ff5252]")
+            cl = "#98c379" if r["success"] else "#ff6b6b"
+            out.write(f"  [{cl}]{r['output']}[/{cl}]")
         elif sub.startswith("switch") or sub.startswith("checkout"):
-            branch_name = sub.split(" ", 1)[1] if " " in sub else ""
-            if not branch_name:
-                out.write("  Usage: /git switch <branch>")
-                out.write(f"  {SEPARATOR}")
+            bname = sub.split(" ", 1)[1] if " " in sub else ""
+            if not bname:
+                out.write("  [dim #555555]usage: /git switch <branch>[/dim #555555]")
                 return
-            r = git.switch(branch_name)
-            if r["success"]:
-                out.write(f"  [bold #00e5bf]\u2713 Switched to {branch_name}[/bold #00e5bf]")
-            else:
-                out.write(f"  [bold #ff5252]\u2718 {r['output']}[/bold #ff5252]")
+            r = git.switch(bname)
+            cl = "#98c379" if r["success"] else "#ff6b6b"
+            out.write(f"  [{cl}]{r['output']}[/{cl}]")
         elif sub == "diff":
-            out.write(f"  [dim #6b6b8a]" + git.diff().replace("\n", "\n  ") + "[/dim #6b6b8a]")
+            for line in git.diff().split("\n"):
+                out.write(f"  [dim #555555]{line}[/dim #555555]")
         else:
-            out.write(f"  [dim #6b6b8a]subcommands: status, log, branch, commit <msg>, switch <b>, diff[/dim #6b6b8a]")
-        out.write(f"  {SEPARATOR}")
+            out.write(f"  [dim #555555]sub: status|log|branch|commit|switch|diff[/dim #555555]")
 
     def action_project(self):
         out = self.query_one("#output", RichLog)
         from core.project_awareness import summary_text
-        self._write_header("PROJECT", "")
-        out.write(f"  [dim #6b6b8a]" + summary_text().replace("\n", "\n  ") + "[/dim #6b6b8a]")
-        out.write(f"  {SEPARATOR}")
+        out.write(f"")
+        out.write(f"[bold #d4d4d4]project[/bold #d4d4d4]")
+        for line in summary_text().split("\n"):
+            out.write(f"  [dim #555555]{line}[/dim #555555]")
 
     def action_plugins(self):
         out = self.query_one("#output", RichLog)
         cmds = self.plugin_registry.commands
         agents = self.plugin_registry.agents
-        self._write_header("PLUGINS", "")
+        out.write(f"")
+        out.write(f"[bold #d4d4d4]plugins[/bold #d4d4d4]")
         if not cmds and not agents:
-            out.write("  [dim #6b6b8a]No plugins loaded.[/dim #6b6b8a]")
-            out.write(f"  {SEPARATOR}")
+            out.write("  [dim #555555]none loaded[/dim #555555]")
             return
         for name, info in cmds.items():
-            out.write(f"  [bold #ffb347]/{name}[/bold #ffb347]  [dim #6b6b8a]{info['description']}[/dim #6b6b8a]")
+            out.write(f"  [dim #555555]/{name}[/dim #555555]  {info['description']}")
         for name, info in agents.items():
-            out.write(f"  [bold #ffb347]{name}[/bold #ffb347] agent  [dim #6b6b8a]{info['description']}[/dim #6b6b8a]")
-        out.write(f"  {SEPARATOR}")
+            out.write(f"  [dim #555555]{name}[/dim #555555] agent  {info['description']}")
 
     def action_skills(self):
         out = self.query_one("#output", RichLog)
-        self._write_header("SKILLS", f"{len(self.skills)} available")
+        out.write(f"")
+        out.write(f"[bold #d4d4d4]skills ({len(self.skills)})[/bold #d4d4d4]")
         if not self.skills:
-            out.write("  [dim #6b6b8a]No skills discovered.[/dim #6b6b8a]")
-            out.write(f"  {SEPARATOR}")
+            out.write("  [dim #555555]none[/dim #555555]")
             return
         for name in self.skills:
-            out.write(f"  [bold #ffb347]/[/bold #ffb347][bold #00e5bf]{name}[/bold #00e5bf]")
-        out.write(f"  {SEPARATOR}")
+            out.write(f"  [dim #555555]/{name}[/dim #555555]")
 
     def action_skill(self, name: str, extra: str = ""):
         out = self.query_one("#output", RichLog)
@@ -453,8 +378,7 @@ class BrijeshAI(App):
                     found = f
                     break
         if not found:
-            out.write(f"  [bold #ff5252]Unknown skill: {name}[/bold #ff5252]")
-            out.write(f"  {SEPARATOR}")
+            out.write(f"  [bold #ff6b6b]unknown skill: {name}[/bold #ff6b6b]")
             return
         content = open(found, encoding="utf-8").read()[:2000]
         client = LLMClient()
@@ -464,36 +388,14 @@ class BrijeshAI(App):
             {"role": "system", "content": sys_prompt},
             {"role": "user", "content": user_msg},
         ], agent="skill")
-        self._write_header("SKILL", name)
+        out.write(f"")
+        out.write(f"[bold #d4d4d4]skill:[/bold #d4d4d4] {name}")
         for line in r.split("\n")[:40]:
-            out.write(f"  {line[:160]}")
-        out.write(f"  {SEPARATOR}")
+            out.write(f"  {line[:200]}")
 
     def action_clear(self):
         self.query_one("#output", RichLog).clear()
         self._banner()
-
-    def action_help(self):
-        out = self.query_one("#output", RichLog)
-        out.write(f"")
-        out.write(f"  [bold #ffb347]Commands[/bold #ffb347]")
-        out.write(f"  [bold #00e5bf]\u2500[/bold #00e5bf]" * 40)
-        out.write(f"  [bold #00e5bf]/research[/bold #00e5bf]  [dim #6b6b8a]<topic>[/dim #6b6b8a]")
-        out.write(f"  [bold #00e5bf]/plan[/bold #00e5bf]      [dim #6b6b8a]<desc>[/dim #6b6b8a]     research 11 sectors + final report")
-        out.write(f"  [bold #00e5bf]/tool[/bold #00e5bf]       [dim #6b6b8a]<task>[/dim #6b6b8a]     agent with file/shell/web tools")
-        out.write(f"  [bold #00e5bf]/review[/bold #00e5bf]     [dim #6b6b8a]<file>[/dim #6b6b8a]     code review")
-        out.write(f"  [bold #00e5bf]/code[/bold #00e5bf]       [dim #6b6b8a]<file> <desc>[/dim #6b6b8a]     modify code")
-        out.write(f"  [bold #00e5bf]/generate[/bold #00e5bf]   [dim #6b6b8a]<spec>[/dim #6b6b8a]     generate code")
-        out.write(f"  [bold #00e5bf]/agent[/bold #00e5bf]      [dim #6b6b8a]<name>[/dim #6b6b8a]     switch agent")
-        out.write(f"  [bold #00e5bf]/git[/bold #00e5bf]        [dim #6b6b8a]status|log|commit|branch|switch|diff[/dim #6b6b8a]")
-        out.write(f"  [bold #00e5bf]/project[/bold #00e5bf]    [dim #6b6b8a]project overview[/dim #6b6b8a]")
-        out.write(f"  [bold #00e5bf]/plugins[/bold #00e5bf]    [dim #6b6b8a]list plugins[/dim #6b6b8a]")
-        out.write(f"  [bold #00e5bf]/skills[/bold #00e5bf]     [dim #6b6b8a]list skills[/dim #6b6b8a]")
-        out.write(f"  [bold #00e5bf]/status[/bold #00e5bf]     [dim #6b6b8a]costs and stats[/dim #6b6b8a]")
-        out.write(f"  [bold #00e5bf]/clear[/bold #00e5bf]      [dim #6b6b8a]clear screen[/dim #6b6b8a]")
-        out.write(f"  [bold #00e5bf]/help[/bold #00e5bf]       [dim #6b6b8a]this help[/dim #6b6b8a]")
-        out.write(f"  [bold #00e5bf]/exit[/bold #00e5bf]       [dim #6b6b8a]quit[/dim #6b6b8a]")
-        out.write(f"  {SEPARATOR}")
 
     def on_input_submitted(self, event: Input.Submitted) -> None:
         inp = event.value.strip()
@@ -505,32 +407,28 @@ class BrijeshAI(App):
             cmd = parts[0].lower()
             args = parts[1].strip() if len(parts) > 1 else ""
             if cmd == "research":
-                if not args: self._usage("research <topic>"); return
+                if not args: return
                 self.action_research(args)
             elif cmd == "plan":
-                if not args: self._usage("plan <desc>"); return
+                if not args: return
                 self.action_plan(args)
             elif cmd == "tool":
-                if not args: self._usage("tool <task>"); return
+                if not args: return
                 self.action_tool(args)
             elif cmd == "review":
-                if not args: self._usage("review <file>"); return
+                if not args: return
                 self.action_review(args)
             elif cmd == "code":
                 ps = args.split(" ", 1)
-                if len(ps) < 2: self._usage("code <file> <instr>"); return
+                if len(ps) < 2: return
                 self.action_code(ps[0], ps[1])
             elif cmd == "generate":
-                if not args: self._usage("generate <spec>"); return
+                if not args: return
                 self.action_generate(args)
             elif cmd == "agent":
                 if args and args.lower() in AGENTS:
                     self.current_agent = args.lower()
                     self._update_status()
-                else:
-                    out = self.query_one("#output", RichLog)
-                    out.write(f"  [dim #6b6b8a]agents: {', '.join(AGENTS.keys())}[/dim #6b6b8a]")
-                    out.write(f"  {SEPARATOR}")
             elif cmd == "git":
                 self.action_git(args)
             elif cmd == "project":
@@ -554,14 +452,11 @@ class BrijeshAI(App):
             else:
                 plugin_result = self.plugin_registry.commands.get(cmd)
                 if plugin_result:
-                    out = self.query_one("#output", RichLog)
                     result = plugin_result["handler"](args)
                     for line in result.split("\n"):
-                        out.write(f"  {line}")
+                        self.query_one("#output", RichLog).write(f"  {line}")
                 else:
-                    out = self.query_one("#output", RichLog)
-                    out.write(f"  [bold #ff5252]unknown: /{cmd}[/bold #ff5252]  [dim #6b6b8a]/help[/dim #6b6b8a]")
-                    out.write(f"  {SEPARATOR}")
+                    self.query_one("#output", RichLog).write(f"  [dim #555555]unknown: /{cmd}[/dim #555555]")
         else:
             sk = self._find_skill(inp.split(" ")[0])
             if sk:
@@ -570,10 +465,6 @@ class BrijeshAI(App):
             else:
                 self.action_research(inp)
         self._save_session()
-
-    def _usage(self, msg: str):
-        out = self.query_one("#output", RichLog)
-        out.write(f"  [dim #6b6b8a]usage: /{msg}[/dim #6b6b8a]")
 
     def _find_skill(self, name: str):
         for s in self.skills:
@@ -584,9 +475,6 @@ class BrijeshAI(App):
     def watch_current_agent(self, value):
         self._update_status()
 
-    def action_focus_input(self):
-        self.query_one("#input", Input).focus()
-
     def action_clear_screen(self):
         self.action_clear()
 
@@ -594,8 +482,7 @@ class BrijeshAI(App):
         self._save_session()
 
 def main():
-    app = BrijeshAI()
-    app.run()
+    BrijeshAI().run()
 
 if __name__ == "__main__":
     main()
