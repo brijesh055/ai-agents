@@ -3,38 +3,50 @@
 ## Project
 `D:\ai-agents` — local-first multi-agent TUI branded "Brijesh'AI"
 
-## What We Built
-- `tui.py` — Interactive TUI with `/` commands, auto-complete, colored output
-  - Agents: researcher, coder, reviewer, tester
-  - Commands: research, review, code, generate, test, agent, agents, skills, skill, status, help, clear, exit, quit
-  - SlashCompleter: dropdown on typing `/`; Tab also triggers completion
-  - Toolbar shows current agent + provider/model
-  - Skills auto-discovered from ~/.config/opencode/skills/ (49 skills)
-  - Session persistence via `.session.json` (resumes agent on restart)
-- `ai.bat` / `ai.ps1` — launchers; `ai.bat` copied to Python Scripts dir for global `ai` command
-- `core/llm_client.py` — OpenRouter integration working (gpt-3.5-turbo)
+## What We Built (5 Phases)
 
-## Key Changes Made
-1. `&` HTML bug: `Costs & stats` → `Costs and stats` (line 263)
-2. HTML tag crash in usage msgs: changed from `p()` to `print()` for usage lines
-3. Skill execution: `do_skill()` feeds SKILL.md content as system prompt to LLM
-4. Non-command input checks skill name match before doing generic research
-5. Session save/restore via `.session.json` (agent, timestamp)
-6. `p()` function no longer passes `style=style` (caused HTML parse conflicts)
+### Phase 1 — Agent Teamwork Pipeline
+- `/plan <desc>` command — full pipeline: research → code → review → validate
+- `agents/orchestrator/agent.py` — OrchestratorAgent chains all 4 agents
+- Handoff context flows between stages via `AgentHandoff`
+- Stage progress shown inline with status indicators
 
-## User's Understanding
-- User types `ai` to launch the TUI
-- Types `/skill <name>` or just `<skillname>` to run a skill
-- Types any text (no `/`) to research a topic (or run skill if name matches)
-- `/exit` or Ctrl+C/D to quit (state auto-saves)
+### Phase 2 — Tool-Using Agents
+- `/tool <task>` command — agent with file/shell/web tool access
+- `core/tools.py` — 6 tools: read_file, write_file, run_command, list_files, grep_files
+- `core/tool_runner.py` — Tool-calling loop (agent requests tools → system executes → agent continues)
+- Tool call via JSON: `{"tool": "read_file", "args": {"path": "foo.py"}}`
 
-## What User Wants Next
-- Skills should produce EXACT output (code, design tokens, etc.) not descriptions
-- Prompts updated: "produce output directly — no disclaimers"
-- Session persistence so chat context carries across days (solved via this file + .session.json)
-- Mobile APK: Convert this project into a mobile app (Android APK). User prefers web app wrapper approach (option 2 - Flask/FastAPI backend + WebView APK). Discuss when they return.
+### Phase 3 — Rich Terminal UI (Textual)
+- `tui_app.py` — New Textual-based TUI (replaces old prompt_toolkit version)
+- Header with brand, scrollable RichLog output, input bar, status bar
+- CSS-like styling with dark theme (blues/teals)
+- Threaded execution for long-running commands
+
+### Phase 4 — Git & Project Awareness
+- `/git status|log|commit|branch|switch|diff` — full git integration
+- `/project` — auto-detect language, framework, deps, key files, structure
+- `core/git_tools.py` — Git wrapper (status, diff, log, commit, branches)
+- `core/project_awareness.py` — Project analyzer (language, framework, deps)
+
+### Phase 5 — Plugin System
+- Drop `.py` files in `plugins/` to add commands & agents
+- `/plugins` — list loaded plugins
+- `core/plugin_manager.py` — Hot-loads modules, registers commands/agents
+- Example: `plugins/hello_world.py` adds `/hello` command + HelloBot agent
+
+### Infrastructure
+- `tui.py` — Legacy lightweight TUI (still works, `python tui.py`)
+- `tui_app.py` — New Textual TUI (default: `python tui_app.py` or `ai`)
+- `ai.bat` / `ai.ps1` — launchers pointing to tui_app.py
+- Session persistence via `.session.json`
 
 ## Config
-- Provider: openai (OpenRouter)
+- Provider: openai (OpenRouter) via .env
 - Model: gpt-3.5-turbo
 - API key via .env
+- For APK: replace OpenRouter with Ollama (local inference)
+
+## Next Steps
+- APK packaging (Flask/FastAPI backend + WebView wrapper)
+- Voice commands (planned)
