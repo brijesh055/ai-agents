@@ -61,7 +61,7 @@ model = os.getenv("LLM_MODEL", "qwen2.5:7b")
 
 DISCOVERED_SKILLS = []
 
-COMMANDS = ["research", "review", "code", "generate", "test", "plan", "agent", "status", "help", "clear", "exit", "quit", "skills", "skill", "agents"]
+COMMANDS = ["research", "review", "code", "generate", "test", "plan", "agent", "status", "help", "clear", "exit", "quit", "skills", "skill", "agents", "tool"]
 
 def _parse_skill(p):
     try:
@@ -266,6 +266,22 @@ def do_plan(description):
         p(f"  <err>\u2718 Plan failed at stage: {result.get('failed_at')}</err>")
     print()
 
+def do_tool(task):
+    from core.tool_runner import ToolRunner
+    p(f"  <cmd>=== TOOL ===</cmd>  {task}")
+    print()
+    runner = ToolRunner()
+    result = runner.run(
+        "You are an AI assistant with tool access. Use tools to accomplish the task.",
+        task,
+        agent="tool_user",
+    )
+    for line in result.split("\n")[:30]:
+        print(f"  {line[:160]}")
+    if len(result.split("\n")) > 30:
+        p(f"  <dim>... {len(result.split(chr(10))) - 30} more lines</dim>")
+    print()
+
 def do_status():
     s = CostTracker().summary()
     p(f"  <cmd>Session Status</cmd>")
@@ -326,6 +342,7 @@ def do_help():
     p(f"    <cmd>/code</cmd> <dim>&lt;file&gt; &lt;desc&gt;</dim>  Modify code with AI")
     p(f"    <cmd>/generate</cmd> <dim>&lt;spec&gt;</dim>        Generate code")
     p(f"    <cmd>/plan</cmd> <dim>&lt;desc&gt;</dim>            Full pipeline: research → code → review → validate")
+    p(f"    <cmd>/tool</cmd> <dim>&lt;task&gt;</dim>            Agent with file/shell/web tool access")
     p(f"    <cmd>/test</cmd> <dim>&lt;url&gt;</dim>             Web tests")
     p(f"    <cmd>/agent</cmd> <dim>&lt;name&gt;</dim>          Agent: {', '.join(AGENTS.keys())}")
     p(f"    <cmd>/agents</cmd>                    List specialized agents")
@@ -378,6 +395,9 @@ def run(cmd, args):
     elif c == "plan":
         if not args: print("  Usage: /plan <description>"); return
         do_plan(args)
+    elif c == "tool":
+        if not args: print("  Usage: /tool <task>"); return
+        do_tool(args)
     elif c == "status":
         do_status()
     elif c == "skills":
