@@ -6,10 +6,10 @@
 ## What We Built (5 Phases)
 
 ### Phase 1 — Agent Teamwork Pipeline
-- `/plan <desc>` command — full pipeline: research → code → review → validate
-- `agents/orchestrator/agent.py` — OrchestratorAgent chains all 4 agents
-- Handoff context flows between stages via `AgentHandoff`
-- Stage progress shown inline with status indicators
+- `/plan <desc>` command — research 6 sectors + final consolidated report (STOPS here — user reviews, then orders code)
+- Sectors: PRD, TRD, Security, Frontend, Backend, Infrastructure
+- Final report: executive summary, key decisions, tech stack table, implementation plan, risk highlights, next steps
+- No auto-code — user must explicitly order `/code` or `/generate` after reviewing report
 
 ### Phase 2 — Tool-Using Agents
 - `/tool <task>` command — agent with file/shell/web tool access

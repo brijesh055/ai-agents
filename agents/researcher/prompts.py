@@ -48,13 +48,59 @@ SECTORS = {
         "cost estimation for infrastructure, disaster recovery and backup strategy, "
         "and infrastructure-as-code approach (Terraform, Pulumi, CloudFormation)."
     ),
+    "ux": (
+        "You are a senior UX/UI designer. Analyze the given topic and design the user experience. "
+        "Cover: target user personas and their goals, user journey maps and key flows, "
+        "information architecture and navigation patterns, wireframe concepts for key screens, "
+        "visual design direction (color, typography, spacing), interaction patterns and micro-interactions, "
+        "accessibility requirements (WCAG 2.1 AA compliance), responsive design breakpoints, "
+        "error states, empty states, and loading states for every screen, "
+        "design system recommendations (component library, tokens), and usability testing approach."
+    ),
+    "testing": (
+        "You are a senior QA engineer. Analyze the given topic and design the testing strategy. "
+        "Cover: test pyramid breakdown (unit/integration/e2e ratio), unit testing framework and approach, "
+        "integration testing strategy (API tests, database tests), end-to-end testing tools and scenarios, "
+        "test data management (fixtures, factories, seeds), CI pipeline integration for tests, "
+        "code coverage targets and measurement tools, performance / load testing approach, "
+        "accessibility testing tools and methodology, security testing (SAST, DAST, dependency scanning), "
+        "manual testing checklists for critical flows, and bug reporting workflow."
+    ),
+    "data": (
+        "You are a senior data engineer. Analyze the given topic and design the data architecture. "
+        "Cover: data model and entity relationships, database choice and schema design, "
+        "data migration strategy (schema changes, seed data), analytics and reporting requirements, "
+        "event tracking architecture (analytics events, properties, pipelines), "
+        "data export/import mechanisms, data retention and archival policy, "
+        "caching strategy (layers, invalidation, TTLs), "
+        "data pipeline for ETL/ELT if needed, data privacy considerations (PII handling), "
+        "and backup and restore procedures."
+    ),
+    "monitoring": (
+        "You are a senior SRE / observability engineer. Analyze the given topic and design monitoring. "
+        "Cover: logging strategy (structured logs, log levels, centralization), "
+        "metrics to track (RED: Rate/Errors/Duration, USE: Utilization/Saturation/Errors), "
+        "distributed tracing approach, dashboard design for key stakeholders, "
+        "alerting rules and escalation policies, SLIs and SLOs definition, "
+        "uptime monitoring and synthetic checks, error tracking and crash reporting, "
+        "cost monitoring and budget alerts, and runbook / on-call procedures."
+    ),
+    "localization": (
+        "You are a senior i18n engineer. Analyze the given topic and design localization. "
+        "Cover: internationalization architecture (string extraction, locale files), "
+        "target markets and languages priority, RTL layout support requirements, "
+        "date/time/number/currency formatting per locale, translation workflow and tooling, "
+        "regional compliance differences (privacy laws, content restrictions), "
+        "localized SEO and content strategy, CDN and content delivery for global regions, "
+        "language detection and switching UI pattern, and testing strategy for localized builds."
+    ),
 }
 
-SECTORS_ORDER = ["prd", "trd", "security", "frontend", "backend", "infrastructure"]
+SECTORS_ORDER = ["prd", "trd", "security", "ux", "frontend", "backend", "data", "testing", "infrastructure", "monitoring", "localization"]
 
 SYNTHESIS_PROMPT = (
-    "You are a senior technical program manager. You have received analysis from 6 domain experts "
-    "(PRD, TRD, Security, Frontend, Backend, Infrastructure) on the same topic. "
+    "You are a senior technical program manager. You have received analysis from 11 domain experts "
+    "(PRD, TRD, Security, UX, Frontend, Backend, Data, Testing, Infrastructure, Monitoring, Localization) on the same topic. "
     "Synthesize all findings into a single, clear, actionable final report. Structure it as:\n\n"
     "1. EXECUTIVE SUMMARY (2-3 paragraphs — what, why, how, key risks)\n"
     "2. KEY DECISIONS NEEDED (list unresolved trade-offs the user must decide)\n"
