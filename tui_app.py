@@ -85,10 +85,19 @@ class BrijeshAI(App):
         self.query_one("#input", Input).focus()
         self._load_session()
         self._discover_skills()
+        self._load_plugins()
         self._banner()
         self._update_status()
         from core.cost_tracker import CostTracker
         self.cost_tracker = CostTracker()
+
+    def _load_plugins(self):
+        from core.plugin_manager import discover_plugins, get_registry
+        loaded = discover_plugins()
+        if loaded:
+            out = self.query_one("#output", RichLog)
+            out.write(f"  [dim #666666]Plugins loaded: {', '.join(loaded)}[/dim #666666]")
+        self.plugin_registry = get_registry()
 
     def _banner(self):
         out = self.query_one("#output", RichLog)
@@ -275,6 +284,19 @@ class BrijeshAI(App):
         from core.project_awareness import summary_text
         out.write(f"\n  [bold #ffa500]Project Overview[/bold #ffa500]\n  " + summary_text().replace("\n", "\n  "))
 
+    def action_plugins(self):
+        out = self.query_one("#output", RichLog)
+        cmds = self.plugin_registry.commands
+        agents = self.plugin_registry.agents
+        if not cmds and not agents:
+            out.write("  [dim #666666]No plugins loaded.[/dim #666666]")
+            return
+        out.write(f"\n  [bold #ffa500]Plugins[/bold #ffa500]")
+        for name, info in cmds.items():
+            out.write(f"    [bold #ffa500]/{name}[/bold #ffa500]  [dim #666666]{info['description']}[/dim #666666]")
+        for name, info in agents.items():
+            out.write(f"    [bold #ffa500]{name}[/bold #ffa500] agent  [dim #666666]{info['description']}[/dim #666666]")
+
     def action_skills(self):
         out = self.query_one("#output", RichLog)
         if not self.skills:
@@ -325,6 +347,7 @@ class BrijeshAI(App):
         out.write(f"    [bold #ffa500]/agent[/bold #ffa500] [dim #666666]<name>[/dim #666666]")
         out.write(f"    [bold #ffa500]/git[/bold #ffa500] [dim #666666]status|log|commit|branch|switch|diff[/dim #666666]")
         out.write(f"    [bold #ffa500]/project[/bold #ffa500]")
+        out.write(f"    [bold #ffa500]/plugins[/bold #ffa500]              List loaded plugins")
         out.write(f"    [bold #ffa500]/skills[/bold #ffa500]")
         out.write(f"    [bold #ffa500]/status[/bold #ffa500]")
         out.write(f"    [bold #ffa500]/clear[/bold #ffa500]")
@@ -372,6 +395,8 @@ class BrijeshAI(App):
                 self.action_git(args)
             elif cmd == "project":
                 self.action_project()
+            elif cmd == "plugins":
+                self.action_plugins()
             elif cmd == "skills":
                 self.action_skills()
             elif cmd == "skill":
@@ -387,7 +412,13 @@ class BrijeshAI(App):
                 self._save_session()
                 self.exit()
             else:
-                out.write(f"  [bold #ff4444]Unknown: /{cmd}[/bold #ff4444]  [dim #666666]/help[/dim #666666]")
+                plugin_result = self.plugin_registry.commands.get(cmd)
+                if plugin_result:
+                    result = plugin_result["handler"](args)
+                    for line in result.split("\n"):
+                        out.write(f"  {line}")
+                else:
+                    out.write(f"  [bold #ff4444]Unknown: /{cmd}[/bold #ff4444]  [dim #666666]/help[/dim #666666]")
         else:
             sk = self._find_skill(inp.split(" ")[0])
             if sk:
