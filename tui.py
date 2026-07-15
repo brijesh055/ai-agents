@@ -1,4 +1,4 @@
-"""Brijesh'AI — Interactive TUI (like Claude Code / opencode)"""
+"""Brijesh'AI — Premium Interactive TUI"""
 import sys, os
 from glob import glob
 from pathlib import Path
@@ -19,35 +19,20 @@ _load_env()
 SESSION_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), ".session.json")
 
 def _save_session():
-    data = {
-        "current_agent": current_agent,
-        "timestamp": __import__("datetime").datetime.now().isoformat(),
-    }
     try:
         with open(SESSION_FILE, "w") as f:
-            __import__("json").dump(data, f)
-    except:
-        pass
+            __import__("json").dump({"current_agent": current_agent,
+                "timestamp": __import__("datetime").datetime.now().isoformat()}, f)
+    except: pass
 
 def _load_session():
-    if not os.path.exists(SESSION_FILE):
-        return None
+    if not os.path.exists(SESSION_FILE): return None
     try:
         with open(SESSION_FILE) as f:
-            data = __import__("json").load(f)
-        return data
-    except:
-        return None
-
-def _clear_session():
-    try:
-        if os.path.exists(SESSION_FILE):
-            os.remove(SESSION_FILE)
-    except:
-        pass
+            return __import__("json").load(f)
+    except: return None
 
 BRAND = "Brijesh'AI"
-
 AGENTS = {
     "researcher": {"label": "Researcher", "emoji": "\U0001F50D"},
     "coder":      {"label": "Coder",      "emoji": "\U0001F4BB"},
@@ -56,98 +41,34 @@ AGENTS = {
 }
 
 current_agent = "researcher"
-provider = os.getenv("LLM_PROVIDER", "ollama")
-model = os.getenv("LLM_MODEL", "qwen2.5:7b")
-
+provider = os.getenv("LLM_PROVIDER", "openai")
+model = os.getenv("LLM_MODEL", "gpt-3.5-turbo")
 DISCOVERED_SKILLS = []
 
-COMMANDS = ["research", "review", "code", "generate", "test", "plan", "agent", "status", "help", "clear", "exit", "quit", "skills", "skill", "agents", "tool"]
+COMMANDS = ["research", "review", "code", "generate", "test", "plan", "tool", "agent",
+            "git", "project", "plugins", "status", "help", "clear", "exit", "quit",
+            "skills", "skill", "agents"]
 
-def _parse_skill(p):
-    try:
-        txt = open(p, encoding="utf-8").read()
-        desc = ""
-        lines = txt.split("\n")
-        in_fm = lines and lines[0].strip() == "---"
-        if in_fm:
-            collecting = False
-            collected = []
-            for line in lines[1:]:
-                if line.strip() == "---":
-                    break
-                if collecting:
-                    if line.startswith("  ") or line.startswith("\t"):
-                        collected.append(line.strip())
-                    else:
-                        break
-                elif line.startswith("description:"):
-                    v = line.split(":", 1)[1].strip()
-                    if v == ">":
-                        collecting = True
-                    else:
-                        desc = v.strip('"').strip("'")[:200]
-                        break
-            if collecting and collected:
-                desc = " ".join(collected)[:200]
-        if not desc:
-            for line in lines:
-                if line.strip() and not line.startswith("#") and not line.startswith("---"):
-                    desc = line.strip()[:200]
-                    break
-        return {"name": Path(p).parent.name, "path": p, "description": desc, "content": txt[:2000]}
-    except:
-        return None
-
-def discover_skills():
-    dirs = [
-        os.path.expanduser("~/.config/opencode/skills"),
-        os.path.expanduser("~/.agents/skills"),
-    ]
-    found = []
-    seen = set()
-    for d in dirs:
-        for f in glob(os.path.join(d, "**/SKILL.md"), recursive=True):
-            s = _parse_skill(f)
-            if s and s["name"] not in seen:
-                seen.add(s["name"])
-                found.append(s)
-    return found
-
-def discover_skills_from_openpai():
-    skills_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "skills")
-    found = []
-    seen = set()
-    if os.path.isdir(skills_dir):
-        for f in glob(os.path.join(skills_dir, "**/SKILL.md"), recursive=True):
-            s = _parse_skill(f)
-            if s and s["name"] not in seen:
-                seen.add(s["name"])
-                found.append(s)
-    return found
-
-pft = print_formatted_text
-history_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), ".tui_history")
-
-style = Style.from_dict({
-    "header":  "#00d4aa bold",
-    "brand":   "#ff6b9d bold",
-    "cmd":     "#ffa500",
-    "err":     "#ff4444",
-    "ok":      "#00d4aa",
-    "dim":     "#666666 italic",
-    "toolbar": "bg:#222222 #aaaaaa",
-    "prompt":  "bold #00d4aa",
+# --- Premium color palette ---
+STYLE = Style.from_dict({
+    "brand":     "#00e5bf bold",
+    "accent":    "#ffb347 bold",
+    "success":   "#98c379 bold",
+    "error":     "#ff6b6b bold",
+    "dim":       "#6b6b8a italic",
+    "white":     "#e8e8f0",
+    "toolbar":   "bg:#1a1a2a #6b6b8a",
+    "prompt":    "#00e5bf bold",
+    "header-bg": "bg:#12122a #e8e8f0",
 })
 
 bindings = KeyBindings()
 
 @bindings.add("c-c")
-def _(event):
-    raise KeyboardInterrupt
+def _(event): raise KeyboardInterrupt
 
 @bindings.add("c-d")
-def _(event):
-    event.app.exit()
+def _(event): event.app.exit()
 
 @bindings.add("tab")
 def _(event):
@@ -156,324 +77,310 @@ def _(event):
         b.start_completion(select_first=False)
 
 class SlashCompleter(Completer):
-    def __init__(self, words):
-        self.words = words
-
+    def __init__(self, words): self.words = words
     def get_completions(self, document, complete_event):
         text = document.text_before_cursor
-        if not text.startswith("/"):
-            return
+        if not text.startswith("/"): return
         partial = text[1:].lower()
         for word in self.words:
             if partial in word.lower():
-                yield Completion(
-                    "/" + word, start_position=-len(text), display="/" + word
-                )
+                yield Completion("/" + word, start_position=-len(text), display="/" + word)
 
-def p(*args, **kw):
-    pft(HTML(" ".join(str(a) for a in args)), **kw)
+def p(text=""):
+    if text:
+        print_formatted_text(HTML(text), style=STYLE)
+    else:
+        print()
 
 def banner():
     w = os.get_terminal_size().columns
     print()
-    p(f"<b><header>{BRAND}</header></b>  <dim>v1.0</dim>")
-    p("<dim>" + "\u2500" * min(w - 2, 50) + "</dim>")
-    p(f"<dim>Type /help for commands. Agent: {AGENTS[current_agent]['label']}</dim>")
-    print()
+    p(f"<brand>{BRAND}</brand>  <dim>v2.0</dim>")
+    p(f"<dim>{'\u2500' * min(w - 2, 60)}</dim>")
+    p(f"<dim>agent: {AGENTS[current_agent]['label']}  |  {provider}/{model}</dim>")
+    p()
 
 def sep():
     w = os.get_terminal_size().columns
-    p("<dim>" + "\u2500" * min(w - 2, 50) + "</dim>")
+    p(f"<dim>{'\u2500' * min(w - 2, 60)}</dim>")
+
+# --- Action handlers ---
 
 def do_research(topic):
     from agents.researcher.agent import ResearcherAgent
     from agents.researcher.prompts import SECTORS_ORDER
-    ctx = f"Project context: available agents = {', '.join(AGENTS.keys())}. "
-    if DISCOVERED_SKILLS:
-        ctx += f"Available skills = {', '.join(s['name'] for s in DISCOVERED_SKILLS[:5])}. "
-    enriched = f"{ctx}\nResearch topic: {topic}"
+    enriched = f"Research topic: {topic}"
     a = ResearcherAgent()
-    print(end="", flush=True)
     r = a.research(enriched)
     if r.get("type") == "general":
         answer = r.get("answer", "")
         if answer:
-            print(f"  {answer.strip()}")
-        print()
+            for line in answer.split("\n"):
+                print(f"  {line[:200]}")
         return
     sectors = r.get("sectors", {})
     for sector in SECTORS_ORDER:
         text = sectors.get(sector, "")
         if not text or text.startswith("Error"):
-            p(f"  <err>\u2718 {sector.upper()}: error</err>")
+            p(f"  <dim>{sector}</dim>  <error>\u2718</error>")
             continue
-        p(f"\n  <cmd>\u25B6 {sector.upper()}</cmd>")
-        for line in text.strip().split("\n")[:8]:
-            print(f"    {line[:120]}")
-    print()
-
-def do_review(fp):
-    from agents.reviewer.agent import ReviewerAgent
-    if not os.path.exists(fp):
-        p(f"  <err>File not found: {fp}</err>")
-        return
-    r = ReviewerAgent().review(fp)
-    for i in r.get("issues", []):
-        sev = i.get("severity", "info")
-        ln = i.get("line", "?")
-        cl = {"error": "err", "warn": "warn", "info": "dim"}.get(sev, "dim")
-        p(f"  <{cl}>[{sev.upper()}][L{ln}] {i.get('message','')}</{cl}>")
-    s = r.get("summary", "")
-    if s:
-        p(f"  <dim>{s[:200]}</dim>")
-    print()
-
-def do_code(fp, instr):
-    from agents.coder.agent import CodingAgent
-    r = CodingAgent().modify(fp, instr)
-    if r.get("success"):
-        p(f"  <ok>\u2713 Modified {fp}</ok>")
-    else:
-        p(f"  <err>\u2718 {r.get('error','Failed')}</err>")
-    print()
-
-def do_generate(spec, lang="python"):
-    from agents.coder.agent import CodingAgent
-    r = CodingAgent().generate(spec, lang)
-    if r.get("success"):
-        code = r["code"]
-        p(f"  <ok>\u2713 Generated {lang} code:</ok>")
-        for line in code.split("\n")[:20]:
-            print(f"    {line}")
-        if len(code.split("\n")) > 20:
-            p(f"  <dim>... {len(code.split(chr(10))) - 20} more lines</dim>")
-    else:
-        p(f"  <err>\u2718 {r.get('error','Failed')}</err>")
-    print()
+        p(f"  <dim>{sector}</dim>  <success>\u2713</success>")
+        first = text.strip().split("\n")[0][:120]
+        if first:
+            print(f"    {first}")
 
 def do_plan(description):
     from agents.orchestrator.agent import OrchestratorAgent
-    p(f"  <cmd>=== PLAN ===</cmd>  {description}")
-    print()
-    o = OrchestratorAgent()
-    result = o.run_pipeline(description)
-    stages = result.get("stages", [])
-    for s in stages:
-        name = s["name"]
-        status = s["status"]
-        output = s.get("output", "")
-        if status == "done":
-            p(f"  <ok>\u2713 {name.upper()}</ok>  <dim>{output}</dim>")
-        else:
-            p(f"  <err>\u2718 {name.upper()}</err>  <dim>{s.get('error', 'failed')}</dim>")
+    p(f"<accent>plan:</accent> {description}")
+    result = OrchestratorAgent().run_pipeline(description)
+    for s in result.get("stages", []):
+        name = s["name"]; status = s["status"]; output = s.get("output", "")
+        icon = "\u2713" if status == "done" else "\u2718"
+        cl = "success" if status == "done" else "error"
+        p(f"  <{cl}>{icon}</{cl}> <dim>{name}  {output}</dim>")
     if result.get("type") == "general":
         answer = result.get("results", {}).get("research", {}).get("answer", "")
         if answer:
-            print(f"  {answer.strip()}")
-        print()
+            for line in answer.split("\n"):
+                print(f"  {line[:200]}")
         return
     if result.get("all_passed"):
         report = result.get("results", {}).get("report", "")
-        print()
-        p(f"  <cmd>FINAL REPORT</cmd>")
-        p(f"  <dim>Review below, then order code with /code or /generate</dim>")
-        print()
+        p(f"  <dim>{'\u2500' * 50}</dim>")
+        p(f"  <accent>report</accent>  <dim>order code \u2192 /code or /generate</dim>")
         if report:
             for line in report.split("\n"):
-                print(f"  {line[:180]}")
+                print(f"  {line[:200]}")
     else:
-        print()
-        p(f"  <err>\u2718 Plan failed at: {result.get('failed_at')}</err>")
-    print()
+        p(f"  <error>\u2718 {result.get('failed_at')}</error>")
 
 def do_tool(task):
     from core.tool_runner import ToolRunner
-    p(f"  <cmd>=== TOOL ===</cmd>  {task}")
-    print()
-    runner = ToolRunner()
-    result = runner.run(
+    p(f"<accent>tool:</accent> {task}")
+    result = ToolRunner().run(
         "You are an AI assistant with tool access. Use tools to accomplish the task.",
-        task,
-        agent="tool_user",
-    )
+        task, agent="tool_user")
     for line in result.split("\n")[:30]:
-        print(f"  {line[:160]}")
-    if len(result.split("\n")) > 30:
-        p(f"  <dim>... {len(result.split(chr(10))) - 30} more lines</dim>")
-    print()
+        print(f"  {line[:200]}")
+
+def do_review(fp):
+    from agents.reviewer.agent import ReviewerAgent
+    p(f"<accent>review:</accent> {fp}")
+    if not os.path.exists(fp):
+        p(f"  <error>not found: {fp}</error>")
+        return
+    r = ReviewerAgent().review(fp)
+    for i in r.get("issues", []):
+        sev = i.get("severity", "error"); ln = i.get("line", "?")
+        cl = "error" if sev == "error" else "accent" if sev == "warn" else "dim"
+        p(f"  <{cl}>[{sev}][L{ln}] {i.get('message','')}</{cl}>")
+    s = r.get("summary", "")
+    if s:
+        p(f"  <dim>{s[:200]}</dim>")
+
+def do_code(fp, instr):
+    from agents.coder.agent import CodingAgent
+    p(f"<accent>code:</accent> {fp}")
+    r = CodingAgent().modify(fp, instr)
+    if r.get("success"):
+        p(f"  <success>\u2713 modified</success>")
+    else:
+        p(f"  <error>\u2718 {r.get('error','Failed')}</error>")
+
+def do_generate(spec, lang="python"):
+    from agents.coder.agent import CodingAgent
+    p(f"<accent>generate:</accent> {lang}")
+    r = CodingAgent().generate(spec, lang)
+    if r.get("success"):
+        p(f"  <success>\u2713 generated</success>")
+        for line in r["code"].split("\n")[:20]:
+            print(f"  {line}")
+    else:
+        p(f"  <error>\u2718 {r.get('error','Failed')}</error>")
 
 def do_status():
     s = CostTracker().summary()
-    p(f"  <cmd>Session Status</cmd>")
-    print(f"    Calls:  {s['calls']}")
-    print(f"    Tokens: {s['tokens']['total']}  (in: {s['tokens']['input']}  out: {s['tokens']['output']})")
-    print(f"    Cost:   ${s['session_cost']}")
-    p(f"    <dim>Provider: {provider} | Model: {model}</dim>")
-    print()
+    p(f"<accent>status</accent>")
+    print(f"  calls:  {s['calls']}")
+    print(f"  tokens: {s['tokens']['total']}  (in: {s['tokens']['input']}  out: {s['tokens']['output']})")
+    p(f"  cost:   <accent>${s['session_cost']}</accent>")
+    p(f"  <dim>model: {provider}/{model}</dim>")
 
 def do_skills():
     if not DISCOVERED_SKILLS:
-        p(f"  <dim>No skills discovered. Check ~/.config/opencode/skills/</dim>")
-        print()
+        p(f"  <dim>no skills discovered</dim>")
         return
-    p(f"  <cmd>Available Skills ({len(DISCOVERED_SKILLS)})</cmd>")
+    p(f"<accent>skills ({len(DISCOVERED_SKILLS)})</accent>")
     for s in DISCOVERED_SKILLS:
-        p(f"    <cmd>/{s['name']}</cmd>  <dim>{s['description'][:80]}</dim>")
-    print()
+        p(f"  <accent>/{s['name']}</accent>  <dim>{s['description'][:80]}</dim>")
 
-def do_skill(name, extra_args=""):
+def do_skill(name, extra=""):
     for s in DISCOVERED_SKILLS:
         if s['name'].lower() == name.lower():
-            print()
-            p(f"  <cmd>\u2699\uFE0F Skill: {s['name']}</cmd>")
-            print()
+            p(f"<accent>skill:</accent> {s['name']}")
             client = LLMClient()
-            sys_prompt = f"CRITICAL: Produce the EXACT requested output (code, design tokens, config, etc.) directly — no disclaimers, no explanations, no markdown wrappers unless specified. Output the deliverable itself, not a description of it.\n\n{s['content']}"
-            user_msg = extra_args or f"Apply the {s['name']} skill to this project and produce the output."
+            sys_prompt = f"CRITICAL: Produce the EXACT requested output directly. No disclaimers.\n\n{s['content']}"
+            user_msg = extra or f"Apply the {s['name']} skill."
             r = client.chat([
                 {"role": "system", "content": sys_prompt},
-                {"role": "user", "content": user_msg},
-            ], agent="skill")
+                {"role": "user", "content": user_msg}], agent="skill")
             for line in r.split("\n")[:40]:
-                print(f"  {line[:160]}")
-            if len(r.split("\n")) > 40:
-                p(f"  <dim>... {len(r.split('\n')) - 40} more lines</dim>")
-            print()
+                print(f"  {line[:200]}")
             return
-    p(f"  <err>Unknown skill: {name}</err>  <dim>Type /skills to list</dim>")
-    print()
+    p(f"  <error>unknown skill: {name}</error>")
+
+def do_git(sub):
+    import core.git_tools as git
+    p(f"<accent>git:</accent> {sub if sub else 'status'}")
+    if not git.is_repo():
+        p(f"  <error>not a git repo</error>")
+        return
+    if sub == "status" or not sub:
+        for line in git.status().split("\n"):
+            p(f"  <dim>{line}</dim>")
+    elif sub == "log":
+        for line in git.log(10).split("\n"):
+            p(f"  <dim>{line}</dim>")
+    elif sub == "branch":
+        for b in git.branches():
+            p(f"  <dim>{b}</dim>")
+    elif sub.startswith("commit"):
+        msg = sub.split(" ", 1)[1] if " " in sub else ""
+        if not msg:
+            msg = git.auto_commit_message()
+            p(f"  <dim>auto: {msg}</dim>")
+        r = git.commit(msg)
+        p(f"  <{'success' if r['success'] else 'error'}>{r['output']}</{'success' if r['success'] else 'error'}>")
+    elif sub.startswith("switch"):
+        bn = sub.split(" ", 1)[1] if " " in sub else ""
+        if not bn: p("  <dim>usage: /git switch <branch></dim>"); return
+        r = git.switch(bn)
+        p(f"  <{'success' if r['success'] else 'error'}>{r['output']}</{'success' if r['success'] else 'error'}>")
+    elif sub == "diff":
+        for line in git.diff().split("\n"):
+            p(f"  <dim>{line}</dim>")
+    else:
+        p("  <dim>sub: status|log|branch|commit|switch|diff</dim>")
+
+def do_project():
+    from core.project_awareness import summary_text
+    p(f"<accent>project</accent>")
+    for line in summary_text().split("\n"):
+        p(f"  <dim>{line}</dim>")
+
+def do_plugins():
+    from core.plugin_manager import get_registry
+    reg = get_registry()
+    p(f"<accent>plugins</accent>")
+    if not reg.commands and not reg.agents:
+        p("  <dim>none loaded</dim>")
+        return
+    for name, info in reg.commands.items():
+        p(f"  <accent>/{name}</accent>  <dim>{info['description']}</dim>")
+    for name, info in reg.agents.items():
+        p(f"  <accent>{name}</accent> agent  <dim>{info['description']}</dim>")
+
+def do_agents():
+    p(f"<accent>agents</accent>")
+    for k, v in AGENTS.items():
+        p(f"  {v['emoji']} <accent>{k}</accent>  <dim>{v['label']}</dim>")
+
+def do_help():
+    p(f"<accent>commands</accent>")
+    p("  <dim>/research</dim>  <dim>&lt;topic&gt;</dim>")
+    p("  <dim>/plan</dim>      <dim>&lt;desc&gt;</dim>    research 11 sectors + report")
+    p("  <dim>/tool</dim>      <dim>&lt;task&gt;</dim>    tool-using agent")
+    p("  <dim>/review</dim>    <dim>&lt;file&gt;</dim>")
+    p("  <dim>/code</dim>      <dim>&lt;file&gt; &lt;instr&gt;</dim>")
+    p("  <dim>/generate</dim>  <dim>&lt;spec&gt;</dim>")
+    p("  <dim>/agent</dim>     <dim>&lt;name&gt;</dim>")
+    p("  <dim>/git</dim>       <dim>status|log|commit|branch|switch|diff</dim>")
+    p("  <dim>/project</dim>")
+    p("  <dim>/plugins</dim>   <dim>/skills</dim>   <dim>/status</dim>   <dim>/clear</dim>   <dim>/exit</dim>")
 
 def _find_skill(topic):
     for s in DISCOVERED_SKILLS:
-        if s['name'].lower() == topic.lower():
-            return s
+        if s['name'].lower() == topic.lower(): return s
     return None
 
-def do_agents():
-    p(f"  <cmd>Available Agents</cmd>")
-    for k, v in AGENTS.items():
-        p(f"    {v['emoji']} <cmd>{k}</cmd>  <dim>{v['label']}</dim>")
-    print()
+COMMANDS_MAP = {
+    "research": lambda a: do_research(a) if a else None,
+    "review":   lambda a: do_review(a) if a else None,
+    "code":     lambda a: exec('ps=a.split(" ",1); do_code(ps[0],ps[1]) if len(ps)>=2 else None'),
+    "generate": lambda a: do_generate(a) if a else None,
+    "plan":     lambda a: do_plan(a) if a else None,
+    "tool":     lambda a: do_tool(a) if a else None,
+    "git":      lambda a: do_git(a),
+    "project":  lambda a: do_project(),
+    "plugins":  lambda a: do_plugins(),
+    "agent":    lambda a: switch_agent(a),
+    "skills":   lambda a: do_skills(),
+    "skill":    lambda a: do_skill(*(a.split(" ", 1)+[""])[:2]),
+    "status":   lambda a: do_status(),
+    "help":     lambda a: do_help(),
+    "clear":    lambda a: os.system("cls" if os.name=="nt" else "clear") or banner(),
+    "exit":     lambda a: sys.exit(0),
+    "quit":     lambda a: sys.exit(0),
+}
 
-def do_help():
-    p(f"  <cmd>Commands</cmd>")
-    p(f"    <cmd>/research</cmd> <dim>&lt;topic&gt;</dim>       Five-lens research")
-    p(f"    <cmd>/review</cmd> <dim>&lt;file&gt;</dim>          Review code")
-    p(f"    <cmd>/code</cmd> <dim>&lt;file&gt; &lt;desc&gt;</dim>  Modify code with AI")
-    p(f"    <cmd>/generate</cmd> <dim>&lt;spec&gt;</dim>        Generate code")
-    p(f"    <cmd>/plan</cmd> <dim>&lt;desc&gt;</dim>            Full pipeline: research → code → review → validate")
-    p(f"    <cmd>/tool</cmd> <dim>&lt;task&gt;</dim>            Agent with file/shell/web tool access")
-    p(f"    <cmd>/test</cmd> <dim>&lt;url&gt;</dim>             Web tests")
-    p(f"    <cmd>/agent</cmd> <dim>&lt;name&gt;</dim>          Agent: {', '.join(AGENTS.keys())}")
-    p(f"    <cmd>/agents</cmd>                    List specialized agents")
-    p(f"    <cmd>/skills</cmd>                    List available skills")
-    p(f"    <cmd>/skill</cmd> <dim>&lt;name&gt;</dim>          Load a skill")
-    p(f"    <cmd>/status</cmd>                    Costs and stats")
-    p(f"    <cmd>/help</cmd>                      This help")
-    p(f"    <cmd>/clear</cmd>                     Clear screen")
-    p(f"    <cmd>/exit</cmd>                      Quit")
-    print()
+def switch_agent(name):
+    global current_agent
+    if name and name.lower() in AGENTS:
+        current_agent = name.lower()
+        p(f"  <success>switched to {AGENTS[current_agent]['label']}</success>")
+    else:
+        p(f"  <dim>agents: {', '.join(AGENTS.keys())}</dim>")
 
 def run(cmd, args):
-    global current_agent
-    c = cmd.lower()
-    if c == "research":
-        if not args: print("  Usage: /research <topic>"); return
-        do_research(args)
-    elif c == "review":
-        if not args: print("  Usage: /review <file>"); return
-        do_review(args)
-    elif c == "code":
-        ps = args.split(" ", 1)
-        if len(ps) < 2: print("  Usage: /code <file> <instructions>"); return
-        do_code(ps[0], ps[1])
-    elif c == "generate":
-        if not args: print("  Usage: /generate <spec>"); return
-        lang = "python"
-        if " --lang " in args:
-            ps = args.split(" --lang ", 1)
-            args, lang = ps[0], ps[1].strip() or "python"
-        do_generate(args, lang)
-    elif c == "test":
-        if not args: print("  Usage: /test <url>"); return
-        from agents.web_tester.agent import WebTestingAgent
-        r = WebTestingAgent().run_test(args, [{"action": "navigate", "selector": args}])
-        cl = "ok" if r.get("success") else "err"
-        p(f"  <{cl}>Test {'ok' if r.get('success') else 'failed'}: {args}</{cl}>")
-        for e in r.get("errors", []):
-            p(f"  <err>  {e}</err>")
-        print()
-    elif c == "agent":
-        if args and args.lower() in AGENTS:
-            global current_agent
-            current_agent = args.lower()
-            ai = AGENTS[current_agent]
-            p(f"  <ok>Switched to {ai['emoji']} {ai['label']}</ok>")
-        else:
-            p(f"  <dim>Agents: {', '.join(AGENTS.keys())}</dim>")
-        print()
-    elif c == "plan":
-        if not args: print("  Usage: /plan <description>"); return
-        do_plan(args)
-    elif c == "tool":
-        if not args: print("  Usage: /tool <task>"); return
-        do_tool(args)
-    elif c == "status":
-        do_status()
-    elif c == "skills":
-        do_skills()
-    elif c == "skill":
-        if not args: print("  Usage: /skill <name> [args]"); return
-        ps = args.split(" ", 1)
-        do_skill(ps[0], ps[1].strip() if len(ps) > 1 else "")
-    elif c == "agents":
-        do_agents()
-    elif c == "help":
-        do_help()
-    elif c == "clear":
-        os.system("cls" if os.name == "nt" else "clear")
-        banner()
-    elif c in ("exit", "quit"):
-        _save_session()
-        p("  <dim>Goodbye!</dim>")
-        sys.exit(0)
+    fn = COMMANDS_MAP.get(cmd.lower())
+    if fn:
+        try: fn(args)
+        except: pass
     else:
-        p(f"  <err>Unknown: /{c}</err>  <dim>Type /help</dim>")
-        print()
+        from core.plugin_manager import get_registry
+        reg = get_registry()
+        if cmd in reg.commands:
+            for line in reg.commands[cmd]["handler"](args).split("\n"):
+                print(f"  {line}")
+        else:
+            p(f"  <error>unknown: /{cmd}</error>  <dim>/help</dim>")
 
 def toolbar():
     ai = AGENTS[current_agent]
-    return HTML(f"  {ai['emoji']} <b>{ai['label']}</b>  |  {provider}/{model}  |  <b>{BRAND}</b>")
+    try:
+        import core.git_tools as git
+        branch = git.branch() if git.is_repo() else ""
+    except:
+        branch = ""
+    parts = [f" {ai['emoji']} {ai['label']}  |  {provider}/{model}"]
+    if branch:
+        parts.append(f"  {branch}")
+    c = CostTracker().summary()
+    parts.append(f"  ${c['session_cost']:.4f}")
+    return HTML("  " + "  |".join(parts) + f"  |  {BRAND}")
 
 def main():
-    global current_agent
+    global current_agent, DISCOVERED_SKILLS
     os.system("cls" if os.name == "nt" else "clear")
     banner()
-
-    global DISCOVERED_SKILLS
     DISCOVERED_SKILLS = discover_skills() + discover_skills_from_openpai()
-
     prev = _load_session()
     if prev:
         current_agent = prev.get("current_agent", current_agent)
         ts = prev.get("timestamp", "?")[:19]
-        p(f"  <dim>Resuming session from {ts} | Agent: {AGENTS[current_agent]['label']}</dim>")
-        print()
-
+        p(f"  <dim>resuming session from {ts}</dim>")
     session = PromptSession(
-        history=FileHistory(history_file),
+        history=FileHistory(os.path.join(os.path.dirname(os.path.abspath(__file__)), ".tui_history")),
         auto_suggest=AutoSuggestFromHistory(),
         enable_history_search=True,
-        style=style,
+        style=STYLE,
     )
-
     while True:
         try:
-            ai = AGENTS[current_agent]
             inp = session.prompt(
-                HTML(f"<prompt>{ai['emoji']} {BRAND} > </prompt>"),
+                HTML(f"<prompt>{AGENTS[current_agent]['emoji']} {BRAND} > </prompt>"),
                 bottom_toolbar=toolbar,
-                style=style,
+                style=STYLE,
                 completer=SlashCompleter(COMMANDS),
                 complete_while_typing=True,
             )
@@ -481,11 +388,8 @@ def main():
             continue
         except EOFError:
             break
-
         inp = inp.strip()
-        if not inp:
-            continue
-
+        if not inp: continue
         sep()
         if inp.startswith("/"):
             ps = inp[1:].strip().split(" ", 1)
@@ -498,16 +402,27 @@ def main():
             else:
                 do_research(inp)
         sep()
-
     _save_session()
-    p("\n  <dim>Goodbye!</dim>\n")
+    p("\n  <dim>goodbye!</dim>\n")
+
+def discover_skills():
+    dirs = [os.path.expanduser("~/.config/opencode/skills"), os.path.expanduser("~/.agents/skills")]
+    found, seen = [], set()
+    for d in dirs:
+        for f in glob(os.path.join(d, "**/SKILL.md"), recursive=True):
+            name = Path(f).parent.name
+            if name not in seen:
+                seen.add(name)
+                try:
+                    txt = open(f, encoding="utf-8").read()[:200]
+                    found.append({"name": name, "path": f, "description": txt.strip()[:200], "content": txt[:2000]})
+                except: pass
+    return found
+
+def discover_skills_from_openpai():
+    return []
 
 if __name__ == "__main__":
-    try:
-        main()
-    except KeyboardInterrupt:
-        _save_session()
-        p("\n  <dim>Goodbye!</dim>\n")
-    except Exception as e:
-        _save_session()
-        p(f"\n  <err>Fatal: {e}</err>\n")
+    try: main()
+    except KeyboardInterrupt: _save_session(); p("\n  <dim>goodbye!</dim>\n")
+    except Exception as e: _save_session(); p(f"\n  <error>fatal: {e}</error>\n")
