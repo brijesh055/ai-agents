@@ -36,6 +36,8 @@ class LLMClient:
         }
         if self.base_url:
             kwargs["api_base"] = self.base_url
+        if self.api_key:
+            kwargs["api_key"] = self.api_key
 
         response = completion(**kwargs)
         token_usage = response.get("usage", {})

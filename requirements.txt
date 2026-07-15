@@ -2,3 +2,4 @@ litellm
 pydantic
 click
 playwright
+prompt_toolkit

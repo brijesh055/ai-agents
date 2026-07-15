@@ -101,8 +101,11 @@ class ReviewerAgent:
 
         issues_text = json.dumps(issues, indent=2)
         messages = [
-            {"role": "system", "content": "You are a senior engineer. Given a file and a list of issues,
-                output the COMPLETE fixed file content that resolves all issues. Preserve all other code exactly."},
+            {"role": "system", "content": (
+                "You are a senior engineer. Given a file and a list of issues, "
+                "output the COMPLETE fixed file content that resolves all issues. "
+                "Preserve all other code exactly."
+            )},
             {"role": "user", "content": (
                 f"File: {file_path}\n\nCurrent code:\n```\n{code}\n```\n\n"
                 f"Issues to fix:\n{issues_text}\n\n"

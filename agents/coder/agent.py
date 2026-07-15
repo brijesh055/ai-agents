@@ -13,15 +13,16 @@ from agents.coder.file_ops import FileOps
 GENERATION_SYSTEM_PROMPT = (
     "You are an expert software engineer. Generate clean, production-ready code based on the specification provided. "
     "Follow language-specific best practices, include error handling, use proper typing, and write concise but "
-    "readable code. Output ONLY the code and any necessary imports — do not include explanatory prose unless "
-    "it's in code comments. If multiple files are needed, separate them with a '--- filename' delimiter."
+    "readable code. Output ONLY the code and any necessary imports — do not include explanatory prose or disclaimers. "
+    "If multiple files are needed, separate them with a '--- filename' delimiter."
 )
 
-MODIFICATION_SYSTEM_PROMPT = (
-    "You are an expert software engineer. You will receive a file's contents and instructions for modification. "
-    "Output the COMPLETE updated file — not just a diff. Preserve all existing functionality unless the "
-    "instructions say otherwise. Follow the same code style, conventions, and patterns already used in the file."
-)
+    MODIFICATION_SYSTEM_PROMPT = (
+        "You are an expert software engineer. You will receive a file's contents and instructions for modification. "
+        "Output the COMPLETE updated file — not just a diff. No explanations or disclaimers. "
+        "Preserve all existing functionality unless the instructions say otherwise. "
+        "Follow the same code style, conventions, and patterns already used in the file."
+    )
 
 REVIEW_SYSTEM_PROMPT = (
     "You are a senior code reviewer. Review the following code for bugs, security issues, performance problems, "
