@@ -61,7 +61,7 @@ model = os.getenv("LLM_MODEL", "qwen2.5:7b")
 
 DISCOVERED_SKILLS = []
 
-COMMANDS = ["research", "review", "code", "generate", "test", "agent", "status", "help", "clear", "exit", "quit", "skills", "skill", "agents"]
+COMMANDS = ["research", "review", "code", "generate", "test", "plan", "agent", "status", "help", "clear", "exit", "quit", "skills", "skill", "agents"]
 
 def _parse_skill(p):
     try:
@@ -243,6 +243,29 @@ def do_generate(spec, lang="python"):
         p(f"  <err>\u2718 {r.get('error','Failed')}</err>")
     print()
 
+def do_plan(description):
+    from agents.orchestrator.agent import OrchestratorAgent
+    p(f"  <cmd>=== PLAN ===</cmd>  {description}")
+    print()
+    o = OrchestratorAgent()
+    result = o.run_pipeline(description)
+    stages = result.get("stages", [])
+    for s in stages:
+        name = s["name"]
+        status = s["status"]
+        output = s.get("output", "")
+        if status == "done":
+            p(f"  <ok>\u2713 {name.upper()}</ok>  <dim>{output}</dim>")
+        else:
+            p(f"  <err>\u2718 {name.upper()}</err>  <dim>{s.get('error', 'failed')}</dim>")
+    if result.get("all_passed"):
+        print()
+        p(f"  <ok>\u2713 Plan complete</ok>")
+    else:
+        print()
+        p(f"  <err>\u2718 Plan failed at stage: {result.get('failed_at')}</err>")
+    print()
+
 def do_status():
     s = CostTracker().summary()
     p(f"  <cmd>Session Status</cmd>")
@@ -302,6 +325,7 @@ def do_help():
     p(f"    <cmd>/review</cmd> <dim>&lt;file&gt;</dim>          Review code")
     p(f"    <cmd>/code</cmd> <dim>&lt;file&gt; &lt;desc&gt;</dim>  Modify code with AI")
     p(f"    <cmd>/generate</cmd> <dim>&lt;spec&gt;</dim>        Generate code")
+    p(f"    <cmd>/plan</cmd> <dim>&lt;desc&gt;</dim>            Full pipeline: research → code → review → validate")
     p(f"    <cmd>/test</cmd> <dim>&lt;url&gt;</dim>             Web tests")
     p(f"    <cmd>/agent</cmd> <dim>&lt;name&gt;</dim>          Agent: {', '.join(AGENTS.keys())}")
     p(f"    <cmd>/agents</cmd>                    List specialized agents")
@@ -351,6 +375,9 @@ def run(cmd, args):
         else:
             p(f"  <dim>Agents: {', '.join(AGENTS.keys())}</dim>")
         print()
+    elif c == "plan":
+        if not args: print("  Usage: /plan <description>"); return
+        do_plan(args)
     elif c == "status":
         do_status()
     elif c == "skills":

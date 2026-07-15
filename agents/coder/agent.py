@@ -17,12 +17,12 @@ GENERATION_SYSTEM_PROMPT = (
     "If multiple files are needed, separate them with a '--- filename' delimiter."
 )
 
-    MODIFICATION_SYSTEM_PROMPT = (
-        "You are an expert software engineer. You will receive a file's contents and instructions for modification. "
-        "Output the COMPLETE updated file — not just a diff. No explanations or disclaimers. "
-        "Preserve all existing functionality unless the instructions say otherwise. "
-        "Follow the same code style, conventions, and patterns already used in the file."
-    )
+MODIFICATION_SYSTEM_PROMPT = (
+    "You are an expert software engineer. You will receive a file's contents and instructions for modification. "
+    "Output the COMPLETE updated file — not just a diff. No explanations or disclaimers. "
+    "Preserve all existing functionality unless the instructions say otherwise. "
+    "Follow the same code style, conventions, and patterns already used in the file."
+)
 
 REVIEW_SYSTEM_PROMPT = (
     "You are a senior code reviewer. Review the following code for bugs, security issues, performance problems, "
@@ -39,9 +39,12 @@ class CodingAgent:
         self.handoff = handoff or AgentHandoff()
         self.file_ops = FileOps()
 
-    def generate(self, spec: str, language: str = "python") -> dict:
+    def generate(self, spec: str, language: str = "python", context: str = "") -> dict:
+        sys_msg = GENERATION_SYSTEM_PROMPT
+        if context:
+            sys_msg += f"\n\nUse this research context to inform your implementation:\n{context[:3000]}"
         messages = [
-            {"role": "system", "content": GENERATION_SYSTEM_PROMPT},
+            {"role": "system", "content": sys_msg},
             {"role": "user", "content": f"Language: {language}\n\nSpecification:\n{spec}"},
         ]
         try:
