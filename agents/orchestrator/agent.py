@@ -16,11 +16,25 @@ class OrchestratorAgent:
         stages_log = []
         results = {}
 
-        # Stage 1 — Research all sectors
+        # Stage 1 — Research
         stages_log.append({"name": "research", "status": "running"})
         researcher = ResearcherAgent(llm=self.llm, memory=self.memory)
         research = researcher.research(description)
         results["research"] = research
+        query_type = research.get("type", "deep")
+
+        if query_type == "general":
+            stages_log[-1]["status"] = "done"
+            stages_log[-1]["output"] = "general answer"
+            return {
+                "description": description,
+                "type": "general",
+                "stages": stages_log,
+                "results": results,
+                "all_passed": True,
+                "failed_at": None,
+            }
+
         sector_count = len(research.get("sectors", {}))
         error_count = len(research.get("errors", {}))
         status = "done" if error_count < sector_count else "failed"
@@ -41,6 +55,7 @@ class OrchestratorAgent:
 
         return {
             "description": description,
+            "type": "deep",
             "stages": stages_log,
             "results": results,
             "all_passed": all(s["status"] == "done" for s in stages_log),

@@ -195,6 +195,12 @@ def do_research(topic):
     a = ResearcherAgent()
     print(end="", flush=True)
     r = a.research(enriched)
+    if r.get("type") == "general":
+        answer = r.get("answer", "")
+        if answer:
+            print(f"  {answer.strip()}")
+        print()
+        return
     sectors = r.get("sectors", {})
     for sector in SECTORS_ORDER:
         text = sectors.get(sector, "")
@@ -260,6 +266,12 @@ def do_plan(description):
             p(f"  <ok>\u2713 {name.upper()}</ok>  <dim>{output}</dim>")
         else:
             p(f"  <err>\u2718 {name.upper()}</err>  <dim>{s.get('error', 'failed')}</dim>")
+    if result.get("type") == "general":
+        answer = result.get("results", {}).get("research", {}).get("answer", "")
+        if answer:
+            print(f"  {answer.strip()}")
+        print()
+        return
     if result.get("all_passed"):
         report = result.get("results", {}).get("report", "")
         print()

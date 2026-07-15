@@ -152,6 +152,12 @@ class BrijeshAI(App):
         out.write(f"\n[bold #ffa500]=== RESEARCH ===[/bold #ffa500]  {topic}")
         a = ResearcherAgent()
         r = a.research(topic)
+        if r.get("type") == "general":
+            answer = r.get("answer", "")
+            if answer:
+                for line in answer.split("\n"):
+                    out.write(f"  {line[:200]}")
+            return
         sectors = r.get("sectors", {})
         for sector in SECTORS_ORDER:
             text = sectors.get(sector, "")
@@ -177,6 +183,12 @@ class BrijeshAI(App):
                 out.write(f"  [bold #00d4aa]\u2713 {name.upper()}[/bold #00d4aa]  [dim #666666]{output}[/dim #666666]")
             else:
                 out.write(f"  [bold #ff4444]\u2718 {name.upper()}[/bold #ff4444]  [dim #666666]{s.get('error', 'failed')}[/dim #666666]")
+        if result.get("type") == "general":
+            answer = result.get("results", {}).get("research", {}).get("answer", "")
+            if answer:
+                for line in answer.split("\n"):
+                    out.write(f"  {line[:200]}")
+            return
         if result.get("all_passed"):
             report = result.get("results", {}).get("report", "")
             out.write(f"\n[bold #00d4aa]\u2500" * 50 + "[/bold #00d4aa]")
